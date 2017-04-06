@@ -5,7 +5,7 @@ import psycopg2
 import sys
 
 try:
-    db = psycopg2.connect(dbname='bank', user='postgres', password='passw0rd') 
+    db = psycopg2.connect(dbname='bank', user='postgres', password='passw0rd')
     print("successfully connect")
 except:
     print("Can't open database")
@@ -70,7 +70,7 @@ def convert_to_readable(element):
     parsed = minidom.parseString(string)
     return parsed.toprettyxml(indent="    ")
 
-def handle_create(create_node, top):# add reponse parameter to get the responding response 
+def handle_create(create_node, top):# add reponse parameter to get the responding response
     accounts = create_node.findall('account')
     if len(accounts) != 1:
         addxml(top, 'error', create_node, 'Exactly one account can be created')
@@ -128,8 +128,7 @@ def is_valid_float_number(value):
 def can_create_account(account_num): #need to check the db/data structure
     #check 64 bit unsigned number
     if is_valid_64_bit(account_num):
-        
-        exist = "SELECT EXISTS (SELECT 1 FROM Account WHERE account_id = '" + to_64_char(account_num) + "');" 
+        exist = "SELECT EXISTS (SELECT 1 FROM Account WHERE account_id = '" + to_64_char(account_num) + "');"
         try:
             cur.execute(exist)
         except:
@@ -151,12 +150,26 @@ def is_valid_account(account_num):
     #check 64 bit unsigned number and check in db/data structure
     if not is_valid_64_bit(account_num):
         return False
-    return Account.objects.filter(account_id=to_64_char(account_num)).exists()
+    exist = "SELECT EXISTS (SELECT 1 FROM Account WHERE account_id = '" + to_64_char(account_num) + "');"
+    try:
+        cur.execute(exist)
+    except:
+        print("Can't detect the exist")
+    if cur.fetchone() is  None:
+        return False
+    else:
+        return True
 
 def has_enough_money(account_num, money):
     #check whether the account has enough money to pay
-    account = Account.objects.get(account_id=account_num)
-    return account.balance >= money
+    balance = "SELECT balance FROM Account WHERE account_id = '" + account_num + "');"
+    try:
+        cur.execute(balance)
+    except:
+        print("Can't get balance")
+    print(cur.fetchone()[0])
+    type(cur.fecthone()[0])
+    return cur.fetchone()[0] >= money
 
 def handle_transfer(transfer_node, top):
     tos = transfer_node.findall('to')
@@ -187,7 +200,34 @@ def handle_transfer(transfer_node, top):
     if not has_enough_money(from_account, amount):
         addxml(top, 'error', transfer_node, 'Source account does not have enough money')
         return
-        transaction = Transaction()
+    #inser transaction
+    insert_transaction_sql = "INSERT INTO Transaction (to_account, from_account, amount) VALUES (%s, %s, %s);"
+    data = (to_account, from_account, amount)
+    try:
+        cur.execute(insert_transaction_sql, data)
+    except:
+        print("Can't insert transaction")
+    print("Insert transactions Done!")
+
+    #insert tags
+    tags_values = []
+    for tag in tags:
+        tags_values.append("('" + tag.text + "')")
+    tags_values_to_string = ','.join(tags_values)
+    insert_tags_sql = "INSERT INTO tags (content) VALUES " + tags_values_to_string + " ON CONFLICT (content) DO NOTHING;"
+    print(insert_tags_sql)
+    try:
+        cur.execute(insert_tags_sql)
+    except:
+        print("Can't create tags")
+    print("Insert tags Done!")
+
+    #link transaction to tags
+
+    db.commit()
+
+
+    transaction = Transaction()
     transaction.to_account = Account.objects.get(account_id=to_account)
     transaction.from_account = Account.objects.get(account_id=from_account)
     transaction.amount = amount
@@ -223,4 +263,3 @@ def clean_append_zero(str):
             return str[i:]
         if i == 19:
             return '0'
-
