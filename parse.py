@@ -124,11 +124,7 @@ def is_valid_float_number(value):
 def can_create_account(account_num): #need to check the db/data structure
     #check 64 bit unsigned number
     if is_valid_64_bit(account_num):
-<<<<<<< HEAD
         exist = "SELECT EXISTS (SELECT 1 FROM Account WHERE account_id = '" + to_64_char(account_num) + "');"
-=======
-        exist = "SELECT EXISTS (SELECT 1 FROM Account WHERE account_id = '" + to_64_char(account_num) + "');" 
->>>>>>> cd285513c60bfb63d571914fe07de3f5d9183d63
         try:
             cur.execute(exist)
         except:
@@ -154,25 +150,14 @@ def is_valid_account(account_num):
     try:
         cur.execute(exist)
     except:
-<<<<<<< HEAD
-        print("Can't detect the exist")
-    if cur.fetchone() is  None:
-        return False
-    else:
-=======
         print("Can't find if exist")
     print(cur.fetchone()[0])
     if cur.fetchone() is not None:
->>>>>>> cd285513c60bfb63d571914fe07de3f5d9183d63
         return True
 
 def has_enough_money(account_num, money):
     #check whether the account has enough money to pay
-<<<<<<< HEAD
     balance = "SELECT balance FROM Account WHERE account_id = '" + account_num + "');"
-=======
-    balance = "SELECT balance FROM Account WHERE account_id = '" + to_64_char(account_num) + "');"
->>>>>>> cd285513c60bfb63d571914fe07de3f5d9183d63
     try:
         cur.execute(balance)
     except:
@@ -210,7 +195,7 @@ def handle_transfer(transfer_node, top):
     if not has_enough_money(from_account, amount):
         addxml(top, 'error', transfer_node, 'Source account does not have enough money')
         return
-<<<<<<< HEAD
+
     #inser transaction
     insert_transaction_sql = "INSERT INTO Transaction (to_account, from_account, amount) VALUES (%s, %s, %s);"
     data = (to_account, from_account, amount)
@@ -234,19 +219,10 @@ def handle_transfer(transfer_node, top):
     print("Insert tags Done!")
 
     #link transaction to tags
-
+    
     db.commit()
 
 
-=======
-    insert = "INSERT INTO Transaction (to_account, balance) VALUES (%s, %s);"
-    data = (account_num, 0)
-    try:
-        cur.execute(insert, data)
-    except:
-        print("Can't create account")
-    db.commit()
->>>>>>> cd285513c60bfb63d571914fe07de3f5d9183d63
     transaction = Transaction()
     transaction.to_account = Account.objects.get(account_id=to_account)
     transaction.from_account = Account.objects.get(account_id=from_account)
