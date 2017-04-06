@@ -197,10 +197,12 @@ def handle_transfer(transfer_node, top):
         return
 
     #inser transaction
-    insert_transaction_sql = "INSERT INTO Transaction (to_account, from_account, amount) VALUES (%s, %s, %s);"
+    insert_transaction_sql = "INSERT INTO Transaction (to_account, from_account, amount) VALUES (%s, %s, %s) RETURNING id;"
     data = (to_account, from_account, amount)
     try:
         cur.execute(insert_transaction_sql, data)
+        transaction_id = cur.fetchone()[0]
+        print(transaction_id)
     except:
         print("Can't insert transaction")
     print("Insert transactions Done!")
@@ -211,16 +213,18 @@ def handle_transfer(transfer_node, top):
     for tag in tags:
         tags_values.append("('" + tag.text + "')")
     tags_values_to_string = ','.join(tags_values)
-    insert_tags_sql = "INSERT INTO Tag (content) VALUES " + tags_values_to_string + " ON CONFLICT (content) DO NOTHING;"
+    insert_tags_sql = "INSERT INTO Tag (content) VALUES " + tags_values_to_string + " ON CONFLICT (content) DO NOTHING RETURNING id;"
     print(insert_tags_sql)
     try:
         cur.execute(insert_tags_sql)
+        tag_ids = cur.fetchall()
     except:
         print("Can't create tags")
     print("Insert tags Done!")
 
     #link transaction to tags
-    
+    print(tag_ids)
+    print(transaction_id)
     db.commit()
 
     '''
