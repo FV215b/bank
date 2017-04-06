@@ -207,10 +207,11 @@ def handle_transfer(transfer_node, top):
 
     #insert tags
     tags_values = []
+    tags = transfer_node.findall('tag')
     for tag in tags:
         tags_values.append("('" + tag.text + "')")
     tags_values_to_string = ','.join(tags_values)
-    insert_tags_sql = "INSERT INTO tags (content) VALUES " + tags_values_to_string + " ON CONFLICT (content) DO NOTHING;"
+    insert_tags_sql = "INSERT INTO Tag (content) VALUES " + tags_values_to_string + " ON CONFLICT (content) DO NOTHING;"
     print(insert_tags_sql)
     try:
         cur.execute(insert_tags_sql)
@@ -222,7 +223,7 @@ def handle_transfer(transfer_node, top):
     
     db.commit()
 
-
+    '''
     transaction = Transaction()
     transaction.to_account = Account.objects.get(account_id=to_account)
     transaction.from_account = Account.objects.get(account_id=from_account)
@@ -237,6 +238,7 @@ def handle_transfer(transfer_node, top):
             new_tag.content = tag.text
             new_tag.save()
             transaction.tags.add(new_tag)
+    '''
     addxml(top, 'success', transfer_node, 'transferred')
 
 def handle_balance(balance_node, top):
