@@ -55,8 +55,8 @@ def handlexml(request):
             handle_transfer(child, top)
         elif child.tag == "balance":
             handle_balance(child, top)
-        #elif child.tag == "query":
-        #    handle_query(child, top)
+        elif child.tag == "query":
+            handle_query(child, top)
     return convert_to_readable(top)
 
 def addxml(top, tag, node, text):
@@ -204,16 +204,6 @@ def handle_transfer(transfer_node, top):
         addxml(top, 'error', transfer_node, 'Source account does not have enough money')
         return
 
-    #inser transaction
-    insert_transaction_sql = "INSERT INTO Transaction (to_account, from_account, amount) VALUES (%s, %s, %s) RETURNING id;"
-    data = (to_account, from_account, amount)
-    try:
-        cur.execute(insert_transaction_sql, data)
-        transaction_id = cur.fetchone()[0]
-        print(transaction_id)
-    except:
-        print("Can't insert transaction")
-    print("Insert transactions Done!")
 
     #insert tags
     tags_values = []
@@ -229,6 +219,21 @@ def handle_transfer(transfer_node, top):
     except:
         print("Can't create tags")
     print("Insert tags Done!")
+    
+    #insert transaction
+    tags_values = []
+    tags = transfer_node.findall('tag')
+    for tag in tags:
+        tags_values.append(tag.text)
+    insert_transaction_sql = "INSERT INTO Transaction (to_account, from_account, amount, tags) VALUES (%s, %s, %s, %s) RETURNING id;"
+    data = (to_account, from_account, amount, tags_values)
+    try:
+        cur.execute(insert_transaction_sql, data)
+        transaction_id = cur.fetchone()[0]
+        print(transaction_id)
+    except:
+        print("Can't insert transaction")
+    print("Insert transactions Done!")
 
     #link transaction to tags
     print(tag_ids)
@@ -252,23 +257,6 @@ def handle_transfer(transfer_node, top):
     cur.execute(update_to_account_balance)
     cur.execute(update_from_account_balance)
     db.commit()
-    
-    '''
-    transaction = Transaction()
-    transaction.to_account = Account.objects.get(account_id=to_account)
-    transaction.from_account = Account.objects.get(account_id=from_account)
-    transaction.amount = amount
-    tags = transfer_node.findall('tag')
-    transaction.save()
-    for tag in tags:
-        if Tag.objects.filter(content=tag.text).exists():
-            transaction.tags.add(Tag.objects.get(content=tag.text))
-        else:
-            new_tag = Tag()
-            new_tag.content = tag.text
-            new_tag.save()
-            transaction.tags.add(new_tag)
-    '''
     addxml(top, 'success', transfer_node, 'transferred')
 
 def handle_balance(balance_node, top):
@@ -296,3 +284,170 @@ def clean_append_zero(str):
             return str[i:]
         if i == 19:
             return '0'
+
+
+def addqueryxml(final_query, results):
+    query_sentence = "SELECT from_account, to_account, amount, tags FROM Transaction"
+    if final_query != "":
+        query_sentence += " WHERE " + final_query
+    query_sentence += ";"
+    print(query_sentence)
+    cur.execute(query_sentence)
+    query_result = cur.fetchall()
+    for q in query_result:
+        transfer = SubElement(results, 'transfer')
+        from_tag = SubElement(transfer, 'from')
+        from_tag.text = clean_append_zero(q[0].replace(" ",""))
+        print("from: " + from_tag.text)
+        to_tag = SubElement(transfer, 'to')
+        to_tag.text = clean_append_zero(q[1].replace(" ",""))
+        print("to: " + to_tag.text)
+        amount_tag = SubElement(transfer, 'amount')
+        amount_tag.text = str(q[2])
+        print("amount: " + amount_tag.text)
+        tags = SubElement(transfer, 'tags')
+        for t in q[3]:
+            tag = SubElement(tags, 'tag')
+            tag.text = t
+            print("tag: " + tag.text)
+
+def handle_query(query_node, top):
+    flag_container = []
+    flag_container.append(False)
+    final_query = dfs(query_node, flag_container)
+    if flag_container[0]:
+        results = addxml(top, 'error', query_node, 'Query format error')
+    else:
+        results = SubElement(top, 'results')
+        if "ref" in query_node.attrib:
+            results.set('ref', query_node.attrib['ref'])
+        print(final_query)
+        addqueryxml(final_query, results)
+
+def is_valid_relation(child):
+    attr_num = 0
+    if "to" in child.attrib:
+        attr_num += 1
+    if "from" in child.attrib:
+        attr_num += 1
+    if "amount" in child.attrib:
+        attr_num += 1
+    return (attr_num == 1)
+
+def is_valid_tag(child):
+    return ("info" in child.attrib)
+
+def dfs(root, flag_container):
+    if flag_container[0]:
+        return ""
+    if root.tag == "equals":
+        if is_valid_relation(root):
+            if "from" in root.attrib:
+                if is_valid_64_bit(root.attrib['from']):
+                    return "from_account='" + to_64_char(root.attrib['from']) + "'"
+                else:
+                    flag_container[0] = True
+                    return ""
+            elif "to" in root.attrib:
+                if is_valid_64_bit(root.attrib['to']):
+                    return "to_account='" + to_64_char(root.attrib['to']) + "'"
+                else:
+                    flag_container[0] = True
+                    return ""
+            elif "amount" in root.attrib:
+                if is_valid_float_number(root.attrib['amount']):
+                    return "amount=" + root.attrib['amount']
+                else:
+                    flag_container[0] = True
+                    return ""
+        else:
+            flag_container[0] = True
+            return ""
+    elif root.tag == "less":
+        if is_valid_relation(root):
+            if "from" in root.attrib:
+                if is_valid_64_bit(root.attrib['from']):
+                    return "from_account<'" + to_64_char(root.attrib['from']) + "'"
+                else:
+                    flag_container[0] = True
+                    return ""
+            elif "to" in root.attrib:
+                if is_valid_64_bit(root.attrib['to']):
+                    return "to_account<'" + to_64_char(root.attrib['to']) + "'"
+                else:
+                    flag_container[0] = True
+                    return ""
+            elif "amount" in root.attrib:
+                if is_valid_float_number(root.attrib['amount']):
+                    return "amount<" + root.attrib['amount']
+                else:
+                    flag_container[0] = True
+                    return ""
+        else:
+            flag_container[0] = True
+            return ""
+    elif root.tag == "greater":
+        if is_valid_relation(root):
+            if "from" in root.attrib:
+                if is_valid_64_bit(root.attrib['from']):
+                    return "from_account>'" + to_64_char(root.attrib['from']) + "'"
+                else:
+                    flag_container[0] = True
+                    return ""
+            elif "to" in root.attrib:
+                if is_valid_64_bit(root.attrib['to']):
+                    return "to_account>'" + to_64_char(root.attrib['to']) + "'"
+                else:
+                    flag_container[0] = True
+                    return ""
+            elif "amount" in root.attrib:
+                if is_valid_float_number(root.attrib['amount']):
+                    return "amount>" + root.attrib['amount']
+                else:
+                    flag_container[0] = True
+                    return ""
+        else:
+            flag_container[0] = True
+            return ""
+    elif root.tag == "tag":
+        if is_valid_tag(root):
+            tag_query = "SELECT id FROM Tag WHERE content='" + root.attrib['info'] + "';"
+            cur.execute(tag_query)
+            tag_id = cur.fetchone()
+            if tag_id is not None:
+                transaction_query = "SELECT transaction_id FROM Transaction_Tag WHERE tag_id=" + str(tag_id[0]) + ";"
+                cur.execute(transaction_query)
+                transaction_ids = cur.fetchall()
+                trans_list = []
+                for trans in transaction_ids:
+                    trans_list.append("id=" + str(trans[0]))
+                return "(" + ' OR '.join(trans_list) + ")"
+            else:
+                return ""
+        else:
+            flag_container[0] = True
+            return ""
+    elif (root.tag == "or") or (root.tag == "and") or (root.tag == "not") or (root.tag == "query"):
+        children_list = []
+        for child in root:
+            dfs_value = dfs(child, flag_container)
+            if dfs_value != "":
+                children_list.append(dfs_value)
+        if (root.tag == "and") or (root.tag == "query"):
+            if not children_list:
+                return ""
+            else:
+                return "(" + ' AND '.join(children_list) + ")"
+        elif (root.tag == "or"):
+            if not children_list:
+                return ""
+            else:
+                return "(" + ' OR '.join(children_list) + ")"
+        else:
+            if not children_list:
+                return ""
+            else:
+                return "(NOT (" + ' AND '.join(children_list) + "))"
+    else:
+        return ""
+

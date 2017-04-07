@@ -25,7 +25,8 @@ def main():
         id              SERIAL      PRIMARY KEY,
         to_account      CHAR(64)    NOT NULL,
         from_account    CHAR(64)    NOT NULL,
-        amount          REAL        NOT NULL
+        amount          REAL        NOT NULL,
+        tags            TEXT[]
     );
     CREATE TABLE IF NOT EXISTS
     Tag(
