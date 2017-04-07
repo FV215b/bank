@@ -3,14 +3,18 @@ import psycopg2
 import sys
 import parse
 
+host = ''
+port = 12345
+
 def main():
+    #table initialization
     try:
         db = psycopg2.connect(dbname='bank', user='postgres', password='passw0rd') 
         print("successfully connect")
     except:
         print("Can't open database")
     cur = db.cursor()
-    create = """
+    create_table = """
     CREATE TABLE IF NOT EXISTS
     Account(
         account_id  CHAR(64)    PRIMARY KEY,
@@ -26,7 +30,7 @@ def main():
     CREATE TABLE IF NOT EXISTS
     Tag(
         id      SERIAL  PRIMARY KEY,
-        content TEXT    NOT NULL
+        content TEXT    UNIQUE NOT NULL
     );
     CREATE TABLE IF NOT EXISTS
     Transaction_Tag(
@@ -35,22 +39,20 @@ def main():
         PRIMARY KEY (transaction_id, tag_id)
     );
     """
-    cur.execute(create)
-    '''
-    insert = """
-    INSERT INTO Account (account_id, balance) VALUES (%s, %s);
-    """
-    data = ("1234", 101.1)
-    try:
-        cur.execute(insert, data)
-        print("successfully insert")
-    except:
-        print("Can't insert")
-    '''
-    db.commit()
+    cur.execute(create_table)
     
-    host = ''
-    port = 12348  
+    #index initialization
+    create_index = """
+    CREATE UNIQUE INDEX IF NOT EXISTS account_id ON Account(account_id);
+    CREATE INDEX IF NOT EXISTS balance ON Account(balance);
+    CREATE UNIQUE INDEX IF NOT EXISTS transaction_id ON Transaction(id);
+    CREATE INDEX IF NOT EXISTS amount ON Transaction(amount);
+    CREATE UNIQUE INDEX IF NOT EXISTS tag_id ON Tag(id);
+    """
+    cur.execute(create_index)
+    db.commit()
+   
+    #build socket  
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     except:

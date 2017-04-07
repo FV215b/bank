@@ -30,21 +30,21 @@ def handlexml(request):
             cur.execute(clean)
         except:
             print("Can't clean database Account")
-        clean = "DELETE FROM Transaction;"
-        try:
-            cur.execute(clean)
-        except:
-            print("Can't clean database Transaction")
-        clean = "DELETE FROM Tag;"
-        try:
-            cur.execute(clean)
-        except:
-            print("Can't clean database Tag")
         clean = "DELETE FROM Transaction_Tag;"
         try:
             cur.execute(clean)
         except:
             print("Can't clean database Transaction_Tag")
+        clean = "DELETE FROM Tag;"
+        try:
+            cur.execute(clean)
+        except:
+            print("Can't clean database Tag")
+        clean = "DELETE FROM Transaction;"
+        try:
+            cur.execute(clean)
+        except:
+            print("Can't clean database Transaction")
         db.commit()
         print("Database cleaned")
     for child in root:
@@ -92,7 +92,7 @@ def handle_create(create_node, top):# add reponse parameter to get the respondin
         try:
             cur.execute(insert, data)
         except:
-            print("Can't create account")
+            print("Can't create account with default balance")
         db.commit()
         return
 
@@ -103,7 +103,7 @@ def handle_create(create_node, top):# add reponse parameter to get the respondin
         try:
             cur.execute(insert, data)
         except:
-            print("Can't create account")
+            print("Can't create account with user-setting balance")
         db.commit()
     else:
         addxml(top, 'error', create_node, 'Balance has format error')
@@ -124,16 +124,19 @@ def is_valid_float_number(value):
 def can_create_account(account_num): #need to check the db/data structure
     #check 64 bit unsigned number
     if is_valid_64_bit(account_num):
-        exist = "SELECT EXISTS (SELECT 1 FROM Account WHERE account_id = '" + to_64_char(account_num) + "');"
+        exist = "SELECT * FROM Account WHERE account_id = '" + to_64_char(account_num) + "';"
+        print(exist)
         try:
             cur.execute(exist)
         except:
             print("Can't execute")
-        print(cur.fetchone()[0])
         if cur.fetchone() is not None:
+            print("Account existed")
             return False
     else:
+        print("Account not valid")
         return False
+    print("Can create account")
     return True
 
 def is_valid_64_bit(account_num):
@@ -146,24 +149,29 @@ def is_valid_account(account_num):
     #check 64 bit unsigned number and check in db/data structure
     if not is_valid_64_bit(account_num):
         return False
-    exist = "SELECT EXISTS (SELECT 1 FROM Account WHERE account_id = '" + to_64_char(account_num) + "');"
+    exist = "SELECT * FROM Account WHERE account_id = '" + to_64_char(account_num) + "';"
+    print(exist)
     try:
         cur.execute(exist)
     except:
         print("Can't find if exist")
-    print(cur.fetchone()[0])
+    print("account validation: ")
     if cur.fetchone() is not None:
+        print("Account exist")
         return True
+    else:
+        print("Account not exist")
+        return False
 
 def has_enough_money(account_num, money):
     #check whether the account has enough money to pay
-    balance = "SELECT balance FROM Account WHERE account_id = '" + account_num + "');"
+    balance = "SELECT balance FROM Account WHERE account_id = '" + account_num + "';"
+    print(balance)
     try:
         cur.execute(balance)
     except:
         print("Can't get balance")
-    print(cur.fetchone()[0])
-    type(cur.fecthone()[0])
+    print("account balance: ")
     return cur.fetchone()[0] >= money
 
 def handle_transfer(transfer_node, top):
@@ -225,8 +233,26 @@ def handle_transfer(transfer_node, top):
     #link transaction to tags
     print(tag_ids)
     print(transaction_id)
-    db.commit()
+    transaction_tag_pairs = []
+    for tag_id in tag_ids:
+        transaction_tag_pairs.append("(" + str(transaction_id) + "," + str(tag_id[0]) + ")")
+    transaction_tag_pairs_to_string = ','.join(transaction_tag_pairs)
+    insert_transaction_tag_sql = "INSERT INTO Transaction_Tag (transaction_id, tag_id) VALUES " + transaction_tag_pairs_to_string ;
+    print(insert_transaction_tag_sql)
+    try:
+        cur.execute(insert_transaction_tag_sql)
+    except:
+        print("Can't insert_transaction_tag")
+    print("insert_transaction_tag done!")
+    db.commit()    
 
+    #update account balance
+    update_to_account_balance = "UPDATE Account SET balance=balance+" + str(amount) + " WHERE account_id='" + to_account + "';"
+    update_from_account_balance = "UPDATE Account SET balance=balance-" + str(amount) + " WHERE account_id='" + from_account + "';"
+    cur.execute(update_to_account_balance)
+    cur.execute(update_from_account_balance)
+    db.commit()
+    
     '''
     transaction = Transaction()
     transaction.to_account = Account.objects.get(account_id=to_account)
@@ -256,12 +282,13 @@ def handle_balance(balance_node, top):
     addxml(top, 'success', balance_node, check_balance(to_64_char(accounts[0].text)))
 
 def check_balance(account_num): #need to check db/data structure to query
-    balance = "SELECT balance FROM Account WHERE account_id = '" + to_64_char(account_num) + "');"
+    balance_query = "SELECT balance FROM Account WHERE account_id = '" + account_num + "';"
+    print(balance_query)
     try:
-        cur.execute(balance)
+        cur.execute(balance_query)
     except:
         print("Can't get balance")
-    return str(cur.fetchone[0])
+    return str(cur.fetchone()[0])
 
 def clean_append_zero(str):
     for i in range(20):
