@@ -4,7 +4,11 @@ import sys
 import parse
 
 host = ''
-port = 12345
+port = 12346
+
+def append_zero(str):
+    prefix = '0' * (8 - len(str))
+    return prefix + str
 
 if __name__ == '__main__':
     #table initialization
@@ -72,14 +76,14 @@ if __name__ == '__main__':
         while xml_length > 0:
             msg = conn.recv(4096)
             xml += msg
-            xml_length -= 4096
+            xml_length -= len(msg)
         xml_string = str(xml.decode("utf-8"))
-        #xml_string = recvall(conn).decode("utf-8")
-        print(xml_string)
+        print(len(xml_string))
         print("Start handling request...")
         reply = parse.handlexml(xml_string)
         print("Ready for response...")
-        conn.sendall(str.encode(reply))
-        print(reply)
+        conn.sendall((append_zero(str(len(reply))) + reply).encode("utf-8"))
         conn.close()
+        print(xml_string)
+        print(reply)
 
