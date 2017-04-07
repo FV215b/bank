@@ -211,13 +211,16 @@ def handle_transfer(transfer_node, top):
     for tag in tags:
         tags_values.append("('" + tag.text + "')")
     tags_values_to_string = ','.join(tags_values)
-    insert_tags_sql = "INSERT INTO Tag (content) VALUES " + tags_values_to_string + " ON CONFLICT (content) DO NOTHING RETURNING id;"
-    print(insert_tags_sql)
-    try:
-        cur.execute(insert_tags_sql)
-        tag_ids = cur.fetchall()
-    except:
-        print("Can't create tags")
+    if not tags_values_to_string:
+        tag_ids = []
+    else:
+        insert_tags_sql = "INSERT INTO Tag (content) VALUES " + tags_values_to_string + " ON CONFLICT (content) DO NOTHING RETURNING id;"
+        print(insert_tags_sql)
+        try:
+            cur.execute(insert_tags_sql)
+            tag_ids = cur.fetchall()
+        except:
+            print("Can't create tags")
     print("Insert tags Done!")
     
     #insert transaction
@@ -236,8 +239,6 @@ def handle_transfer(transfer_node, top):
     print("Insert transactions Done!")
 
     #link transaction to tags
-    print(tag_ids)
-    print(transaction_id)
     transaction_tag_pairs = []
     for tag_id in tag_ids:
         transaction_tag_pairs.append("(" + str(transaction_id) + "," + str(tag_id[0]) + ")")
