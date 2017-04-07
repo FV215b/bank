@@ -6,7 +6,7 @@ import parse
 host = ''
 port = 12345
 
-def main():
+if __name__ == '__main__':
     #table initialization
     try:
         db = psycopg2.connect(dbname='bank', user='postgres', password='passw0rd') 
@@ -66,14 +66,20 @@ def main():
     while True:
         conn, addr = s.accept()
         length = conn.recv(8)
-        print(length)
-        xml = conn.recv(int(length.decode("utf-8")))
-        print(xml)
-        reply = parse.handlexml(str(xml.decode("utf-8")))
+        xml_length = int(length.decode("utf-8"))
+        print(xml_length)
+        xml = bytes()
+        while xml_length > 0:
+            msg = conn.recv(4096)
+            xml += msg
+            xml_length -= 4096
+        xml_string = str(xml.decode("utf-8"))
+        #xml_string = recvall(conn).decode("utf-8")
+        print(xml_string)
+        print("Start handling request...")
+        reply = parse.handlexml(xml_string)
+        print("Ready for response...")
         conn.sendall(str.encode(reply))
+        print(reply)
         conn.close()
-
-main()
-
-
 
