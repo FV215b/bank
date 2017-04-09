@@ -6,7 +6,9 @@ from xml.dom import minidom
 import random
 import string
 import time
-N = 10000
+import threading
+
+N = 1000
 M = 100
 HOST, PORT = sys.argv[1], 12346
 def append_zero(str):
@@ -54,7 +56,7 @@ def create_account():
         # send_data = str(len(payload)) + payload
         send_data = (append_zero(str(len(payload))) + payload).encode('utf-8')
 
-        print(send_data)
+        # print(send_data)
         start_time = time.time()
         sock.sendall(send_data)
 
@@ -72,8 +74,8 @@ def create_account():
         # Receive data from the server and shut down
     finally:
         sock.close()
-    print(send_data)
-    print(xml_string)
+    # print(send_data)
+    # print(xml_string)
     print("--- %s seconds ---" % (end_time - start_time))
 
 def send_transfer():
@@ -101,13 +103,14 @@ def send_transfer():
         # send_data = str(len(payload)) + payload
         send_data = (append_zero(str(len(payload))) + payload).encode('utf-8')
 
-        print(send_data)
+        # print(send_data)
         start_time = time.time()
         sock.sendall(send_data)
 
 
         length = sock.recv(8)
         end_time = time.time()
+        print(length.decode("utf-8"))
         xml_length = int(length.decode("utf-8"))
         print(xml_length)
         xml = bytes()
@@ -119,10 +122,12 @@ def send_transfer():
         # Receive data from the server and shut down
     finally:
         sock.close()
-    print(send_data)
-    print(xml_string)
+    # print(send_data)
+    # print(xml_string)
     print("--- %s seconds ---" % (end_time - start_time))
 
 tags = generate_tags()
 create_account()
-send_transfer()
+# for i in range(5):
+#     t = threading.Thread(target=send_transfer, args=())
+#     t.start()
