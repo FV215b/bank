@@ -3,6 +3,7 @@ from xml.etree.cElementTree import Element, SubElement, XML, fromstring, tostrin
 from xml.dom import minidom
 import psycopg2
 import sys
+import threading
 
 try:
     db = psycopg2.connect(dbname='bank', user='postgres', password='passw0rd')
@@ -10,6 +11,8 @@ try:
 except:
     print("Can't open database")
 cur = db.cursor()
+
+lock = threading.Lock()
 
 def handlexml(request):
     try:
@@ -120,22 +123,24 @@ def is_valid_float_number(value):
         return False
 
 def create_account(account_num, money): #need to check the db/data structure
-    #exist = "SELECT * FROM Account WHERE account_id = '" + to_64_char(account_num) + "';"
-    exist = "INSERT INTO Account (account_id, balance) VALUES (%s, %s) ON CONFLICT (account_id) DO NOTHING;"
+    exist = "INSERT INTO Account (account_id, balance) VALUES (%s, %s) ON CONFLICT (account_id) DO NOTHING RETURNING account_id;"
     data = (account_num, money)
     print(exist)
     try:
         cur.execute(exist, data)
     except:
-        print("Can't execute")
-    if cur.rowcount < 1:
-        print("Account existed")
+        print("Can't execute. Insert failed")
         return False
-    print("Create account successfully")
-    return True
+    try:
+        print(cur.fetchone()[0])
+        db.commit()
+        print("Create account successfully")
+        return True
+    except:
+        print("Account existed. Insert failed")
+        return False
 
-def is_valid_account(account_num):
-    #check 64 bit unsigned number and check in db/data structure
+def is_valid_account(account_num): #check 64 bit unsigned number and check in db/data structure
     if not is_valid_64_bit(account_num):
         return False
     exist = "SELECT * FROM Account WHERE account_id = '" + to_64_char(account_num) + "';"
@@ -143,8 +148,8 @@ def is_valid_account(account_num):
     try:
         cur.execute(exist)
     except:
-        print("Can't find if exist")
-    print("account validation: ")
+        print("Can't execute is_valid_account")
+        return False
     if cur.fetchone() is not None:
         print("Account exist")
         return True
@@ -163,6 +168,36 @@ def has_enough_money(account_num, money):
     print("account balance: ")
     return cur.fetchone()[0] >= money
 
+def update_from_account_balance(account_num, amount):
+    update_from_account_balance = "UPDATE Account SET balance=balance-" + str(amount) + " WHERE account_id='" + account_num + "' AND balance>=" + str(amount) + " RETURNING account_id;"
+    print(update_from_account_balance)
+    try:
+        cur.execute(update_from_account_balance)
+    except:
+        print("Can't execute update_from_account_balance")
+        return False
+    if cur.fetchone() is not None:
+        print("Successfully updated source account")
+        return True
+    else:
+        print("Update source account failed")
+        return False
+
+def update_to_account_balance(account_num, amount):
+    update_to_account_balance = "UPDATE Account SET balance=balance+" + str(amount) + " WHERE account_id='" + account_num + "' RETURNING account_id;"
+    print(update_to_account_balance)
+    try:
+        cur.execute(update_to_account_balance)
+    except:
+        print("Can't execute update_to_account_balance")
+        return False
+    if cur.fetchone() is not None:
+        print("Successfully updated target account")
+        return True
+    else:
+        print("Update target account failed")
+        return False
+
 def handle_transfer(transfer_node, top):
     tos = transfer_node.findall('to')
     if len(tos) != 1:
@@ -177,11 +212,11 @@ def handle_transfer(transfer_node, top):
         addxml(top, 'error', transfer_node, 'Exactly one transfer amount is allowed')
         return
     #check the to and from exist
-    if not is_valid_account(tos[0].text):
-        addxml(top, 'error', transfer_node, 'Target account does not exist')
+    if not is_valid_64_bit(tos[0].text):
+        addxml(top, 'error', transfer_node, 'Target account format error')
         return
-    if not is_valid_account(froms[0].text):
-        addxml(top, 'error', transfer_node, 'Source account does not exist')
+    if not is_valid_64_bit(froms[0].text):
+        addxml(top, 'error', transfer_node, 'Source account format error')
         return
     if not is_valid_float_number(amounts[0].text):
         addxml(top, 'error', transfer_node, 'Transfer amount has format error')
@@ -189,28 +224,60 @@ def handle_transfer(transfer_node, top):
     to_account = to_64_char(tos[0].text)
     from_account = to_64_char(froms[0].text)
     amount = float(amounts[0].text)
-    if not has_enough_money(from_account, amount):
-        addxml(top, 'error', transfer_node, 'Source account does not have enough money')
+    
+    lock.acquire()
+    if is_valid_account(tos[0].text):
+        if update_from_account_balance(from_account, amount):
+            if update_to_account_balance(to_account, amount):
+                db.commit()
+                lock.release()
+                addxml(top, 'success', transfer_node, 'transferred')
+                print("Successfully update accounts")
+            else:
+                addxml(top, 'error', transfer_node, 'Target account update error')
+                lock.release()
+                return
+        else:
+            addxml(top, 'error', transfer_node, 'Source account not exist or balance is not enough')
+            lock.release()
+            return
+    else:
+        addxml(top, 'error', transfer_node, 'Target account not exist')
+        lock.release()
         return
-
+    
 
     #insert tags
     tags_values = []
+    tag_ids = []
     tags = transfer_node.findall('tag')
     for tag in tags:
         tags_values.append("('" + tag.text + "')")
     tags_values_to_string = ','.join(tags_values)
     if not tags_values_to_string:
-        tag_ids = []
+        print("Tag_values_to_string is empty")
     else:
-        insert_tags_sql = "INSERT INTO Tag (content) VALUES " + tags_values_to_string + " ON CONFLICT (content) DO NOTHING RETURNING id;"
+        insert_tags_sql = "INSERT INTO Tag (content) VALUES " + tags_values_to_string + " ON CONFLICT (content) DO NOTHING;"
         print(insert_tags_sql)
         try:
             cur.execute(insert_tags_sql)
-            tag_ids = cur.fetchall()
+            db.commit()
+            print("Insert tags Done!")
         except:
-            print("Can't create tags")
-    print("Insert tags Done!")
+            print("Can't insert tags")
+        tags_query = []
+        for tag in tags:
+            tags_query.append("'" + tag.text + "'")
+        tags_query_to_string = ','.join(tags_query)
+        select_tags_sql = "SELECT id FROM Tag WHERE content IN (" + tags_query_to_string + ");"
+        print(select_tags_sql)
+        try:
+            cur.execute(select_tags_sql)
+            tag_ids = cur.fetchall()
+            print(tag_ids)
+            print("Query tags Done!")
+        except:
+            print("Can't query tags")
     
     #insert transaction
     tags_values = []
@@ -221,33 +288,27 @@ def handle_transfer(transfer_node, top):
     data = (to_account, from_account, amount, tags_values)
     try:
         cur.execute(insert_transaction_sql, data)
-        transaction_id = cur.fetchone()[0]
+        transaction_id = cur.fetchone()[0]  
         print(transaction_id)
+        db.commit()
+        print("Insert transaction done!")
     except:
         print("Can't insert transaction")
-    print("Insert transactions Done!")
 
     #link transaction to tags
     transaction_tag_pairs = []
     for tag_id in tag_ids:
         transaction_tag_pairs.append("(" + str(transaction_id) + "," + str(tag_id[0]) + ")")
     transaction_tag_pairs_to_string = ','.join(transaction_tag_pairs)
-    insert_transaction_tag_sql = "INSERT INTO Transaction_Tag (transaction_id, tag_id) VALUES " + transaction_tag_pairs_to_string ;
-    print(insert_transaction_tag_sql)
-    try:
-        cur.execute(insert_transaction_tag_sql)
-    except:
-        print("Can't insert_transaction_tag")
-    print("insert_transaction_tag done!")
-    db.commit()    
-
-    #update account balance
-    update_to_account_balance = "UPDATE Account SET balance=balance+" + str(amount) + " WHERE account_id='" + to_account + "';"
-    update_from_account_balance = "UPDATE Account SET balance=balance-" + str(amount) + " WHERE account_id='" + from_account + "';"
-    cur.execute(update_to_account_balance)
-    cur.execute(update_from_account_balance)
-    db.commit()
-    addxml(top, 'success', transfer_node, 'transferred')
+    if transaction_tag_pairs_to_string:
+        insert_transaction_tag_sql = "INSERT INTO Transaction_Tag (transaction_id, tag_id) VALUES " + transaction_tag_pairs_to_string + ";"
+        print(insert_transaction_tag_sql)
+        try:
+            cur.execute(insert_transaction_tag_sql)
+            db.commit()
+            print("insert_transaction_tag done!")
+        except:
+            print("Can't insert_transaction_tag")
 
 def handle_balance(balance_node, top):
     accounts = balance_node.findall('account')
@@ -274,7 +335,6 @@ def clean_append_zero(str):
             return str[i:]
         if i == 19:
             return '0'
-
 
 def addqueryxml(final_query, results):
     query_sentence = "SELECT from_account, to_account, amount, tags FROM Transaction"

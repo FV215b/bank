@@ -6,7 +6,7 @@ import sys
 import parse_mt
 
 host = ''
-port = 12346
+port = 12345
 
 def append_zero(str):
     prefix = '0' * (8 - len(str))
@@ -35,22 +35,22 @@ if __name__ == '__main__':
     #table initialization
     try:
         db = psycopg2.connect(dbname='bank', user='postgres', password='passw0rd') 
-        print("successfully connect")
+        print("Successfully connect to database")
     except:
         print("Can't open database")
     cur = db.cursor()
+    #LOCK TABLE Account IN ROW EXCLUSIVE MODE;
     create_table = """
     CREATE TABLE IF NOT EXISTS
     Account(
-        account_id  CHAR(64)    PRIMARY KEY,
+        account_id  CHAR(20)    PRIMARY KEY,
         balance     REAL        NOT NULL
     );
-    LOCK TABLE Account IN ROW EXCLUSIVE MODE;
     CREATE TABLE IF NOT EXISTS
     Transaction(
         id              SERIAL      PRIMARY KEY,
-        to_account      CHAR(64)    NOT NULL,
-        from_account    CHAR(64)    NOT NULL,
+        to_account      CHAR(20)    NOT NULL,
+        from_account    CHAR(20)    NOT NULL,
         amount          REAL        NOT NULL,
         tags            TEXT[]
     );
