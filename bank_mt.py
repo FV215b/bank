@@ -15,21 +15,21 @@ def append_zero(str):
 def handle_request(conn): 
     length = conn.recv(8)
     xml_length = int(length.decode("utf-8"))
-    print(xml_length)
+    #print(xml_length)
     xml = bytes()
     while xml_length > 0:
         msg = conn.recv(4096)
         xml += msg
         xml_length -= len(msg)
     xml_string = str(xml.decode("utf-8"))
-    print(len(xml_string))
+    #print(len(xml_string))
     print("Start handling request...")
     reply = parse_mt.handlexml(xml_string)
     print("Ready for response...")
-    conn.sendall((append_zero(str(len(reply))) + reply).encode("utf-8"))
+    conn.sendall(append_zero(str(len(reply))).encode("utf-8") + reply)
     conn.close()
-    print(xml_string)
-    print(reply)
+    #print(xml_string)
+    #print(reply)
 
 if __name__ == '__main__':
     #table initialization
