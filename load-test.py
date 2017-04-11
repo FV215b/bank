@@ -8,9 +8,10 @@ import string
 import time
 import threading
 
-N = 20
-M = 10
-HOST, PORT = sys.argv[1], 12346
+N = 10
+M = 30
+account_num = 1000
+HOST, PORT = sys.argv[1], 12345
 logicals = ["or", "and", "not"]
 relations = ["equals", "less", "greater"]
 
@@ -44,7 +45,7 @@ def create_account():
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     top = Element('transactions')
     top.set('reset', "true")
-    for i in range(N):
+    for i in range(account_num):
         created_node = SubElement(top, 'create')
         if random.randint(0,10) is not 0:
             created_node.set('ref', ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(5)))
@@ -316,9 +317,9 @@ def send_mix():
                         choose_query = random.randint(0, 2)
                         if choose_query == 0:
                             to_acc = SubElement(logic_node, 'equals')
-                            to_acc.set('to', str(random.randint(0, N - 1)))
+                            to_acc.set('to', str(random.randint(0, account_num - 1)))
                             from_acc = SubElement(logic_node, 'equals')
-                            from_acc.set('from', str(random.randint(0, N - 1)))
+                            from_acc.set('from', str(random.randint(0, account_num - 1)))
                         elif choose_query == 1:
                             greater_amount = SubElement(logic_node, 'greater')
                             greater_amount.set('amount', str(random.randint(0, 1000000)))
@@ -332,9 +333,9 @@ def send_mix():
                 choose_query = random.randint(0, 2)
                 if choose_query == 0:
                     to_acc = SubElement(query_node, 'equals')
-                    to_acc.set('to', str(random.randint(0, N - 1)))
+                    to_acc.set('to', str(random.randint(0, account_num - 1)))
                     from_acc = SubElement(query_node, 'equals')
-                    from_acc.set('from', str(random.randint(0, N - 1)))
+                    from_acc.set('from', str(random.randint(0, account_num - 1)))
                 elif choose_query == 1:
                     greater_amount = SubElement(query_node, 'greater')
                     greater_amount.set('amount', str(random.randint(0, 1000000)))
@@ -346,9 +347,9 @@ def send_mix():
             if random.randint(0,10) is not 0:
                 transfered_node.set('ref', ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(5)))
             from_tag = SubElement(transfered_node, 'from')
-            from_tag.text = str(random.randint(0, N - 1))
+            from_tag.text = str(random.randint(0, account_num - 1))
             to_tag = SubElement(transfered_node, 'to')
-            to_tag.text = str(random.randint(0, N - 1))
+            to_tag.text = str(random.randint(0, account_num - 1))
             amount_tag = SubElement(transfered_node, 'amount')
             amount_tag.text = str(random.randint(0, 1000000))
             tags_number = random.randint(0, 4)
@@ -373,9 +374,9 @@ def send_mix():
                         choose_query = random.randint(0, 2)
                         if choose_query == 0:
                             to_acc = SubElement(logic_node, 'equals')
-                            to_acc.set('to', str(random.randint(0, N - 1)))
+                            to_acc.set('to', str(random.randint(0, account_num - 1)))
                             from_acc = SubElement(logic_node, 'equals')
-                            from_acc.set('from', str(random.randint(0, N - 1)))
+                            from_acc.set('from', str(random.randint(0, account_num - 1)))
                         elif choose_query == 1:
                             greater_amount = SubElement(logic_node, 'greater')
                             greater_amount.set('amount', str(random.randint(0, 1000000)))
@@ -389,9 +390,9 @@ def send_mix():
                 choose_query = random.randint(0, 2)
                 if choose_query == 0:
                     to_acc = SubElement(query_node, 'equals')
-                    to_acc.set('to', str(random.randint(0, N - 1)))
+                    to_acc.set('to', str(random.randint(0, account_num - 1)))
                     from_acc = SubElement(query_node, 'equals')
-                    from_acc.set('from', str(random.randint(0, N - 1)))
+                    from_acc.set('from', str(random.randint(0, account_num - 1)))
                 elif choose_query == 1:
                     greater_amount = SubElement(query_node, 'greater')
                     greater_amount.set('amount', str(random.randint(0, 1000000)))
@@ -454,7 +455,7 @@ create_account()
 # print("--- final: %s seconds ---" % (end_time - start_time))
 
 start_time = time.time()
-for i in range(1000):
+for i in range(500):
     send_mix()
 end_time = time.time()
 print("--- final: %s seconds ---" % (end_time - start_time))
