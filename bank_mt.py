@@ -12,7 +12,12 @@ def append_zero(str):
     prefix = '0' * (8 - len(str))
     return prefix + str
 
-def handle_request(conn): 
+def listen_multiple(s):
+    while True:
+        conn, addr = s.accept()
+        handle_request(conn)
+
+def handle_request(conn):
     length = conn.recv(8)
     xml_length = int(length.decode("utf-8"))
     #print(xml_length)
@@ -78,7 +83,7 @@ if __name__ == '__main__':
     """
     cur.execute(create_index)
     db.commit()
-   
+    
     #build socket  
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -88,8 +93,13 @@ if __name__ == '__main__':
         s.bind((host, port))
     except socket.error as e:
         print(str(e))
-    s.listen(10)
-    while True:
-        conn, addr = s.accept()
-        t = threading.Thread(target=handle_request, args=(conn,))
+    s.listen(256)
+    for i in range(256):
+        t = threading.Thread(target=listen_multiple, args=(s,))
         t.start()
+    #while True:
+    #    1=1
+    #while True:
+    #    conn, addr = s.accept()
+    #    t = threading.Thread(target=handle_request, args=(conn,))
+    #    t.start()

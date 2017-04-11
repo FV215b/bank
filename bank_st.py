@@ -66,7 +66,7 @@ if __name__ == '__main__':
         s.bind((host, port))
     except socket.error as e:
         print(str(e))
-    s.listen(5)
+    s.listen(100)
     while True:
         conn, addr = s.accept()
         length = conn.recv(8)

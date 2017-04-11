@@ -332,9 +332,9 @@ def clean_append_zero(str):
         if i == 19:
             return '0'
 
-def addqueryxml(final_query, results, cur):
+def addqueryxml(final_query, results, cur, flag_container):
     query_sentence = "SELECT from_account, to_account, amount, tags FROM Transaction"
-    if final_query != "":
+    if flag_container[1]:
         query_sentence += " WHERE " + final_query
     query_sentence += ";"
     #print(query_sentence)
@@ -363,6 +363,7 @@ def addqueryxml(final_query, results, cur):
 def handle_query(query_node, top, cur):
     flag_container = []
     flag_container.append(False)
+    flag_container.append(False)
     final_query = dfs(query_node, flag_container, cur)
     if flag_container[0]:
         results = addxml(top, 'error', query_node, 'Query format error')
@@ -371,7 +372,7 @@ def handle_query(query_node, top, cur):
         if "ref" in query_node.attrib:
             results.set('ref', query_node.attrib['ref'])
         #print(final_query)
-        addqueryxml(final_query, results, cur)
+        addqueryxml(final_query, results, cur, flag_container)
 
 def is_valid_relation(child):
     attr_num = 0
@@ -393,18 +394,21 @@ def dfs(root, flag_container, cur):
         if is_valid_relation(root):
             if "from" in root.attrib:
                 if is_valid_64_bit(root.attrib['from']):
+                    flag_container[1] = True
                     return "from_account='" + to_64_char(root.attrib['from']) + "'"
                 else:
                     flag_container[0] = True
                     return ""
             elif "to" in root.attrib:
                 if is_valid_64_bit(root.attrib['to']):
+                    flag_container[1] = True
                     return "to_account='" + to_64_char(root.attrib['to']) + "'"
                 else:
                     flag_container[0] = True
                     return ""
             elif "amount" in root.attrib:
                 if is_valid_float_number(root.attrib['amount']):
+                    flag_container[1] = True
                     return "amount=" + root.attrib['amount']
                 else:
                     flag_container[0] = True
@@ -416,18 +420,21 @@ def dfs(root, flag_container, cur):
         if is_valid_relation(root):
             if "from" in root.attrib:
                 if is_valid_64_bit(root.attrib['from']):
+                    flag_container[1] = True
                     return "from_account<'" + to_64_char(root.attrib['from']) + "'"
                 else:
                     flag_container[0] = True
                     return ""
             elif "to" in root.attrib:
                 if is_valid_64_bit(root.attrib['to']):
+                    flag_container[1] = True
                     return "to_account<'" + to_64_char(root.attrib['to']) + "'"
                 else:
                     flag_container[0] = True
                     return ""
             elif "amount" in root.attrib:
                 if is_valid_float_number(root.attrib['amount']):
+                    flag_container[1] = True
                     return "amount<" + root.attrib['amount']
                 else:
                     flag_container[0] = True
@@ -439,18 +446,21 @@ def dfs(root, flag_container, cur):
         if is_valid_relation(root):
             if "from" in root.attrib:
                 if is_valid_64_bit(root.attrib['from']):
+                    flag_container[1] = True
                     return "from_account>'" + to_64_char(root.attrib['from']) + "'"
                 else:
                     flag_container[0] = True
                     return ""
             elif "to" in root.attrib:
                 if is_valid_64_bit(root.attrib['to']):
+                    flag_container[1] = True
                     return "to_account>'" + to_64_char(root.attrib['to']) + "'"
                 else:
                     flag_container[0] = True
                     return ""
             elif "amount" in root.attrib:
                 if is_valid_float_number(root.attrib['amount']):
+                    flag_container[1] = True
                     return "amount>" + root.attrib['amount']
                 else:
                     flag_container[0] = True
@@ -470,7 +480,12 @@ def dfs(root, flag_container, cur):
                 trans_list = []
                 for trans in transaction_ids:
                     trans_list.append("id=" + str(trans[0]))
-                return "(" + ' OR '.join(trans_list) + ")"
+                trans_list_to_string = ' OR '.join(trans_list)
+                if trans_list_to_string:
+                    flag_container[1] = True
+                    return "(" + trans_list_to_string + ")"
+                else:
+                    return ""
             else:
                 return ""
         else:
@@ -486,16 +501,19 @@ def dfs(root, flag_container, cur):
             if not children_list:
                 return ""
             else:
+                flag_container[1] = True
                 return "(" + ' AND '.join(children_list) + ")"
         elif (root.tag == "or"):
             if not children_list:
                 return ""
             else:
+                flag_container[1] = True
                 return "(" + ' OR '.join(children_list) + ")"
         else:
             if not children_list:
                 return ""
             else:
+                flag_container[1] = True
                 return "(NOT (" + ' AND '.join(children_list) + "))"
     else:
         return ""
