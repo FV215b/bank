@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<transactions reset="true">
+  <create ref="c1">
+    <account>0</account>
+    <balance>500</balance>
+  </create>
+  <create ref="c2">
+    <account>101</account>
+  </create>
+    <create ref="c3">
+    <account>18446744073709551615</account>
+    <balance>500000</balance>
+  </create>
+  <create ref="c4">
+    <account>184467440737095510</account>
+    <balance>5000000</balance>
+  </create>
+  <transfer ref="1">
+    <to>0</to>
+    <from>184467440737095510</from>
+    <amount>500</amount>
+    <tag>paycheck</tag>
+    <tag>monthly</tag>
+  </transfer>
+  <transfer ref="2">
+    <from>100</from>
+    <to>101</to>
+    <amount>100.34</amount>
+    <tag>food</tag>
+  </transfer>
+  <transfer ref="3">
+    <from>18446744073709551615</from>
+    <to>101</to>
+    <amount>345.67</amount>
+    <tag>saving</tag>
+    <tag>monthly</tag>
+  </transfer>
+  <balance ref="xyz">
+    <account>1234</account>
+  </balance>
+  <query ref="4">
+    <or>
+     <less to="102"/>
+ </or>
+  </query>
+</transactions>

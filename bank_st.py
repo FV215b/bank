@@ -4,7 +4,7 @@ import sys
 import parse
 
 host = ''
-port = 12346
+port = 12348
 
 def append_zero(str):
     prefix = '0' * (8 - len(str))
