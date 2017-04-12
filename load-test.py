@@ -8,10 +8,10 @@ import string
 import time
 import threading
 
-N = 10
+N = 20
 M = 30
-account_num = 1000
-HOST, PORT = sys.argv[1], 12345
+account_num = 500
+HOST, PORT = sys.argv[1], 12346
 logicals = ["or", "and", "not"]
 relations = ["equals", "less", "greater"]
 
@@ -405,14 +405,15 @@ def send_mix():
         sock.connect((HOST, PORT))
         # send_data = str(len(payload)) + payload
         send_data = (append_zero(str(len(payload))) + payload).encode('utf-8')
-
+        start_time1 = time.time()
         # print(send_data)
         sock.sendall(send_data)
 
 
         length = sock.recv(8)
         end_time1 = time.time()
-        print("--- %s seconds ---" % (end_time1 - start_time))
+        # print(start_time1)
+        print("--- %s seconds ---" % (end_time1 - start_time1))
         # print(length.decode("utf-8"))
         xml_length = int(length.decode("utf-8"))
         # print(xml_length)
@@ -447,15 +448,12 @@ create_account()
 # for i in range(1):
 #     t = threading.Thread(target=send_query, args=())
 #     t.start()
+for i in range(200):
+    t = threading.Thread(target=send_mix, args=())
+    t.start()
+
 # start_time = time.time()
-# for i in range(1000):
-#     t = threading.Thread(target=send_mix, args=())
-#     t.start()
+# for i in range(10):
+#     send_mix()
 # end_time = time.time()
 # print("--- final: %s seconds ---" % (end_time - start_time))
-
-start_time = time.time()
-for i in range(500):
-    send_mix()
-end_time = time.time()
-print("--- final: %s seconds ---" % (end_time - start_time))
